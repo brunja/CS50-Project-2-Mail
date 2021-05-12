@@ -6,9 +6,35 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelector('#archived').addEventListener('click', () => load_mailbox('archive'));
   document.querySelector('#compose').addEventListener('click', compose_email);
 
+  // Sending an email on submit
+  document.querySelector('form').onsubmit = send_email;
+
   // By default, load the inbox
   load_mailbox('inbox');
 });
+
+function send_email(event) {
+
+  event.preventDefault();
+
+  const recipients = document.querySelector('#compose-recipients').value;
+  const subject = document.querySelector('#compose-subject').value;
+  const body = document.querySelector('#compose-body').value;
+
+  fetch('/emails', {
+    method: 'POST',
+    body: JSON.stringify({
+        recipients: recipients,
+        subject: subject,
+        body: body
+    })
+  })
+  .then(response => response.json())
+  .then(result => {
+      console.log(result);
+      load_mailbox('sent');
+  });
+}
 
 function compose_email() {
 
@@ -30,4 +56,39 @@ function load_mailbox(mailbox) {
 
   // Show the mailbox name
   document.querySelector('#emails-view').innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
+
+  fetch(`/emails/${mailbox}`)
+  .then(response => response.json())
+  .then(emails => {
+    // Print emails
+    console.log(emails);
+    emails.forEach(email => build_emails(email, mailbox))
+    // ... do something else with emails ...
+  });
+}
+
+function build_emails(email, mailbox){
+  const item = document.createElement('tr');
+
+  const recipient = document.createElement('td');
+  recipient.innerHTML = email.recipients[0];
+  item.appendChild(recipient);
+
+  const subject = document.createElement('td');
+  subject.innerHTML = email.subject;
+  item.appendChild(subject);
+
+  const timestamp = document.createElement('td');
+  timestamp.innerHTML = email.timestamp;
+  item.appendChild(timestamp);
+
+  const itemCard = document.createElement('table');
+  itemCard.appendChild(item);
+
+  document.querySelector('#emails-view').appendChild(itemCard);
+}
+
+function show_email(id, mailbox){
+  
+
 }
