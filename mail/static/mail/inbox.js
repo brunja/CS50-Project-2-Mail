@@ -68,26 +68,28 @@ function load_mailbox(mailbox) {
 }
 
 function build_emails(email, mailbox){
-  const item = document.createElement('tr');
+  const item = document.createElement('div');
+  item.className = "row";
 
-  const recipient = document.createElement('th');
+  const recipient = document.createElement('div');
   recipient.innerHTML = email.recipients[0];
-  recipient.style.width = "20%";
+  recipient.className = "col-3";
   item.appendChild(recipient);
 
-  const subject = document.createElement('th');
+  const subject = document.createElement('div');
   subject.innerHTML = email.subject;
-  subject.style.width = "30%";
+  subject.className = "col-3";
   item.appendChild(subject);
 
-  const timestamp = document.createElement('th');
+  const timestamp = document.createElement('div');
   timestamp.innerHTML = email.timestamp;
-  timestamp.className = "col-md-4";
+  timestamp.className = "col-6";
   item.appendChild(timestamp);
 
-  const itemCard = document.createElement('table');
-  itemCard.className = 'table';
+  const itemCard = document.createElement('div');
   itemCard.style.marginBottom = '0.1rem';
+  itemCard.style.padding = '0.1rem';
+  itemCard.style.cursor = 'pointer';
   itemCard.appendChild(item);
 
   document.querySelector('#emails-view').appendChild(itemCard);
@@ -96,25 +98,30 @@ function build_emails(email, mailbox){
   subject.addEventListener("click", () => show_email(email.id, mailbox));
   timestamp.addEventListener("click", () => show_email(email.id, mailbox));
 
+  // marking the email as read and applying the background of div
   if (email.read == true){
     itemCard.style.backgroundColor = 'lightgrey';
   } else {
     itemCard.style.backgroundColor = 'white';
   }
-  
+
+  // adding "archive" button to inbox and "unarchive" to archived email inbox
   if (mailbox !== 'sent'){
-    const archiveButton = document.createElement('th');
+    const archiveButton = document.createElement('div');
     archiveButton.innerHTML = '<i class="fas fa-archive"></i>';
+    timestamp.className = "col-5";
+    archiveButton.className = "col-1";
     item.appendChild(archiveButton);
     archiveButton.addEventListener("click", () => archive_email(email.id, email.archived));
   }
 }
 
-function show_email(id, mailbox){
+function show_email(id){
 
   const email_view = document.querySelector('#emails-view');
   email_view.innerHTML = "";
 
+  // fetching the appropriate email from api
   fetch(`/emails/${id}`)
   .then(response => response.json())
   .then(email => {
@@ -123,30 +130,49 @@ function show_email(id, mailbox){
     // creating elements with email data
     const data = document.createElement('div');
     data.classList.add('container');
+    
+    // creating a separate div for sender, timestamp and reply button
+    const senderDiv = document.createElement('div');
+    senderDiv.className = 'row';
 
-    const subject = document.createElement('h2');
+    const subject = document.createElement('h3');
     subject.innerHTML = email.subject;
 
-    const sender = document.createElement('h5');
-    sender.innerHTML = email.sender;
+    const sender = document.createElement('div');
+    sender.innerHTML = `<strong>From:</strong> ${email.sender}`;
+    sender.className = 'col-8';
+    senderDiv.appendChild(sender);
 
-    const recipients = document.createElement('h5');
-    recipients.innerHTML = email.recipients;
+    const recipients = document.createElement('div');
+    recipients.innerHTML = `<strong>To:</strong> ${email.recipients}`;
 
-    const body = document.createElement('p');
+    const body = document.createElement('div');
     body.innerHTML = email.body;
+    body.style.marginTop = '10px';
 
-    const time = document.createElement('p');
+    const time = document.createElement('div');
     time.innerHTML = email.timestamp;
+    time.className = 'col-3';
+    senderDiv.appendChild(time);
+
+    // adding a reply button and pre-populating it existing data
+    const replyButton = document.createElement("div");
+    replyButton.innerHTML = '<i class="fas fa-reply"></i>';
+    replyButton.className = 'col-1';
+    senderDiv.appendChild(replyButton);
+    replyButton.addEventListener("click", () => {
+      compose_email();
+      document.querySelector('#compose-recipients').value = email.sender;
+      document.querySelector('#compose-subject').value = `Re: ${email.subject}`;
+      document.querySelector('#compose-body').value = `On ${email.timestamp}, ${email.sender} wrote: ${email.body}`;
+    });
 
     data.appendChild(subject);
-    data.appendChild(sender);
+    data.appendChild(senderDiv);
     data.appendChild(recipients);
-    data.appendChild(time);
+    data.appendChild(body);
 
     email_view.appendChild(data);
-    email_view.appendChild(body);
-    // ... do something else with email ...
 
     // marking the email as read
     fetch(`/emails/${id}`, {
@@ -159,14 +185,13 @@ function show_email(id, mailbox){
 }
 
 // adding toggle for email archive
-function archive_email(id, oldValue) {
-
-  const archive = !oldValue;
+function archive_email(id, oldVal) {
+  const archived = !oldVal;
 
   fetch(`/emails/${id}`, {
     method: 'PUT',
     body: JSON.stringify({
-        archived: archive
+        archived: archived
     })
   })
   load_mailbox('inbox');
